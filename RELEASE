@@ -1,0 +1,37 @@
+Release log of FastqType
+
+===================== Version1.0.0 =====================
+Version: 1.0.0
+Date:    2024-04-26
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. estimate the memory necessary for running the fastq_check
+    2. the mem_size is in unit of Byte
+
+
+===================== Version1.0.1 =====================
+Version: 1.0.1
+Date:    2024-04-28
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. change the filelist.txt to a list of file path
+    
+
+===================== Version1.0.2 =====================
+Version: 1.0.2
+Date:    2024-04-29
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. bloom_memory_estimate: fix the bug that return memory in bit not really byte
+
+===================== Version2.0.0 =====================
+Version: 2.0.0
+Date:    2026-07-20
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. move the project from fastq_mem to fastq_type
+    2. allow to check whether the fastq is type of single-cell
