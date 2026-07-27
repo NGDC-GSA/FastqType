@@ -74,23 +74,17 @@ static const type_t *get_file_format(const unsigned char *cache, int n_byte)
 }
 
 
-int file_type_check(char *file_list, FILE *err_fp)
+int file_type_check(const FileObject *file_obj, FILE *err_fp)
 {
     int status = 0;
-    char file_path[PATH_MAX];
 
-    FILE *list_fp = fopen(file_list, "r");
-    if (!list_fp) {
-        fprintf(stderr, "[SysError:file_type_check:002] failed to open the file list of %s\n", get_path_basename(file_list));
-        exit(-1);
-    }
-
-    while (fgets(file_path, PATH_MAX, list_fp)) {
+    for (int f_idx=0; f_idx < file_obj->n; f_idx++) {
         /* read 512 bytes from the file and check whether the suffix is accurate */
         unsigned char cache[512];
-        char *err_fn = get_file_basename(file_path);
-        FILE *fp = fopen(file_path, "rb");
+        char *err_fn = get_file_basename(file_obj->file_name[f_idx]);
+        const char *file_name = file_obj->file_name[f_idx];
 
+        FILE *fp = fopen(file_name, "rb");
         if (fp == NULL) {
             fprintf(stderr, "[SysError:file_type_check:007] failed to open file of %s\n", err_fn);
             exit(-1);
@@ -105,7 +99,7 @@ int file_type_check(char *file_list, FILE *err_fp)
         }
 
         if (strcmp(type_obj->format, "gz") == 0) {  /* is .gz file */
-            gzFile gz_fp = gzopen(file_path, "r");
+            gzFile gz_fp = gzopen(file_name, "r");
             if (gz_fp <= 0) {
                 fprintf(stderr, "[SysError:file_type_check:005] failed to open gzip file of %s!\n", err_fn);
                 continue;
@@ -154,6 +148,5 @@ int file_type_check(char *file_list, FILE *err_fp)
             fprintf(err_fp, "[FileError:file_type_check:107] the file format of %s may be (.%s), please do not rename the original suffix of the filename!\n", err_fn, type_obj->format);
         }
     }
-    fclose(list_fp);
     return status;
 }

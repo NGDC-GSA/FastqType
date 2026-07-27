@@ -44,7 +44,8 @@ typedef struct {
   @field  reads    the pointer to the reads object array
  */
 typedef struct {
-    size_t n, n_max;
+    size_t n;
+    size_t n_max;
     read_t *reads;
 } cache_t;
 
@@ -52,18 +53,15 @@ typedef struct {
 static char *get_current_time(char *time_buf)
 {
     time_t c_time;
-    struct tm *tm_obj;
-    int year, month, day, hour, minute, second;
-
     time(&c_time);
-    tm_obj = gmtime(&c_time);
+    const struct tm *tm_obj = gmtime(&c_time);
 
-    year = tm_obj->tm_year + 1900;
-    month = tm_obj->tm_mon + 1;
-    day = tm_obj->tm_mday;
-    hour = tm_obj->tm_hour + 8;
-    minute = tm_obj->tm_min;
-    second = tm_obj->tm_sec;
+    const int year = tm_obj->tm_year + 1900;
+    const int month = tm_obj->tm_mon + 1;
+    const int day = tm_obj->tm_mday;
+    const int hour = tm_obj->tm_hour + 8;
+    const int minute = tm_obj->tm_min;
+    const int second = tm_obj->tm_sec;
 
     sprintf(time_buf, "%d-%d-%d %d:%d:%d", year, month, day, hour, minute, second);
     return time_buf;
@@ -78,7 +76,7 @@ static long get_max_file_size(const FileObject *file_obj, int *max_file_idx)
         FILE *fp = fopen(file_obj->file_name[idx], "r");
         if (fp == NULL) {
             char *err_fn = get_path_basename(file_obj->file_name[idx]);
-            fprintf(stderr, "[SysError:get_file_size:019] faild to read the given file %s\n", err_fn);
+            fprintf(stderr, "[SysError:get_file_size:019] failed to read the given file %s\n", err_fn);
             return -1;
         }
         fseek(fp, 0L, SEEK_END);
@@ -96,16 +94,18 @@ static uint64_t bloom_memory_estimate(FileObject *file_obj, cache_t *fastq_cache
 {
     /* get the max_file_size */
     int max_file_idx;
-    long file_size = get_max_file_size(file_obj, &max_file_idx);
-    read_t *f_reads = fastq_cache[max_file_idx].reads;
-    uint64_t f_reads_num = fastq_cache[max_file_idx].n;
+    const long file_size = get_max_file_size(file_obj, &max_file_idx);
+    const read_t *f_reads = fastq_cache[max_file_idx].reads;
+    const uint64_t f_reads_num = fastq_cache[max_file_idx].n;
 
     /* get the minimum and maximum read length*/
     uint64_t n_total_bytes = 0;
-    uint32_t min_read_len=1<<30, max_read_len=0, min_read_byte=1<<30;
+    uint32_t min_read_len = 1<<30;
+    uint32_t max_read_len = 0;
+    uint32_t min_read_byte = 1<<30;
     for (uint64_t i=0; i < f_reads_num; i++) {
-        read_t *read = &f_reads[i];
-        uint32_t n_read_byte = read->name.l + read->seq.l + read->comment.l + read->qual.l + 4;
+        const read_t *read = &f_reads[i];
+        const uint32_t n_read_byte = read->name.l + read->seq.l + read->comment.l + read->qual.l + 4;
         
         n_total_bytes += n_read_byte;
         if (n_read_byte < min_read_byte) min_read_byte = n_read_byte;
@@ -116,22 +116,20 @@ static uint64_t bloom_memory_estimate(FileObject *file_obj, cache_t *fastq_cache
     }
 
     /* evaluate the number of reads with best way */
-    uint64_t avg_read_byte = max_read_len > min_read_len ? min_read_byte : (n_total_bytes / f_reads_num);
-    uint64_t max_item = file_size / avg_read_byte * compress_ratio;
+    const uint64_t avg_read_byte = max_read_len > min_read_len ? min_read_byte : n_total_bytes / f_reads_num;
+    const uint64_t max_item = file_size / avg_read_byte * compress_ratio;
 
     /* m = -1 * (n * ln(p)) / ln(2)^2 */
-    uint64_t mem_size = (uint64_t)ceil(-1 * log(BLOOM_ERROR) * max_item / 0.6185);  /* in bits */
+    uint64_t mem_size = (uint64_t)ceil(-1 * log(BLOOM_ERROR) * (double)max_item / 0.6185);  /* in bits */
     mem_size = mem_size / 8 / 1073741824;  /* in GB */
 
-    return (mem_size - mem_size % 4) + 4;
+    return mem_size - mem_size % 4 + 4;
 }
 
 
-static cache_t *fastq_cache_init(int n_file)
+static cache_t *fastq_cache_init(const int n_file)
 {
-    cache_t *fastq_cache;
-
-    fastq_cache = (cache_t *)calloc(n_file, sizeof(cache_t));
+    cache_t *fastq_cache = calloc(n_file, sizeof(cache_t));
     for (int i=0; i < n_file; i++) {
         cache_t *fc = &fastq_cache[i];
         fc->n_max = CACHE_SIZE;
@@ -144,14 +142,12 @@ static cache_t *fastq_cache_init(int n_file)
 /* read four line from the input fastq file */
 static int fastq_read_core(GzStream *gz, read_t *read)
 {
-    int ret;  /* the normal return is: ret==1 */
-
-    ret = gz_read_util(gz, '\n', &read->name, MAX_READ_LENGTH);  /* get the read name*/
+    int ret = gz_read_util(gz, '\n', &read->name, MAX_READ_LENGTH);  /* get the read name; normal return is: ret==1 */
     switch (ret) {
         case -2: return -3;  /* failed to detect line breaks('\n') */
         case -1: return -1;  /* unexpected end of the file */
         case  0: return 0;  /* end of the file or empty file */
-        case  1: break;  /* normal reading the file */
+        default: break;  /* normal reading the file (ret==1) */
     }
 
     ret = gz_read_util(gz, '\n', &read->seq, MAX_READ_LENGTH);  /* get the read sequence */
@@ -159,7 +155,7 @@ static int fastq_read_core(GzStream *gz, read_t *read)
         case -2: return -3;  /* failed to detect line breaks('\n') */
         case -1: return -1;  /* unexpected end of the file */
         case  0: return -2;  /* incomplete fastq reads, since only one line is readed */
-        case  1: break;  /* normal reading the file */
+        default: break;  /* normal reading the file (ret==1) */
     }
 
     ret = gz_read_util(gz, '\n', &read->comment, MAX_READ_LENGTH); /* get the read comment, usually is '+' */
@@ -167,7 +163,7 @@ static int fastq_read_core(GzStream *gz, read_t *read)
         case -2: return -3;  /* failed to detect line breaks('\n') */
         case -1: return -1;  /* unexpected end of the file */
         case  0: return -2;  /* incomplete fastq reads, since only two lines are readed */
-        case  1: break;  /* normal reading the file */
+        default: break;  /* normal reading the file (ret==1) */
     }
 
     ret = gz_read_util(gz, '\n', &read->qual, MAX_READ_LENGTH); /* get the read quality */
@@ -175,7 +171,7 @@ static int fastq_read_core(GzStream *gz, read_t *read)
         case -2: return -3;  /* failed to detect line breaks('\n') */
         case -1: return -1;  /* unexpected end of the file */
         case  0: return -2;  /* incomplete fastq reads, since only three lines are readed */
-        case  1: break;  /* normal reading the file */
+        default: break;  /* normal reading the file  (ret==1)*/
     }
 
     if (read->name.s[0]=='@' && read->comment.s[0]=='+')
@@ -185,27 +181,21 @@ static int fastq_read_core(GzStream *gz, read_t *read)
 }
 
 
-static int fastq_cache_read(FileObject *file_obj, cache_t *fastq_cache)
+static int fastq_cache_read(const FileObject *file_obj, cache_t *fastq_cache)
 {
-    int ret, finish;
-    GzStream *f_gz;
-    cache_t *f_cache;
-    char *err_fn;
     uint64_t line_num;
 
     for (int i=0; i < file_obj->n; i++) {
-        finish = 0;
-        f_gz = file_obj->gz_hd[i]; 
-        f_cache = &fastq_cache[i]; f_cache->n = 0;
+        int finish = 0;
+        GzStream *f_gz = file_obj->gz_hd[i];
+        cache_t *f_cache = &fastq_cache[i]; f_cache->n = 0;
 
         for (int idx=0; idx < f_cache->n_max && finish != 1; idx++) {
-            ret = fastq_read_core(f_gz, &f_cache->reads[idx]);
+            const int ret = fastq_read_core(f_gz, &f_cache->reads[idx]);
             switch (ret) {
-            case 1:
-                f_cache->n++; break; /* normal reading of the fastq file */
             case 0:
                 finish = 1; break;  /* end of the file (EOF) */
-            case -1:  
+            case -1:
                 return -1;  /* unexpected end of fastq file */
             case -2:
                 line_num = (f_cache->n) * 4 + 1;
@@ -217,6 +207,8 @@ static int fastq_cache_read(FileObject *file_obj, cache_t *fastq_cache)
                 fprintf(stderr, "[FormatError:fastq_cache_read:212] failed to detect line breaks('\\n') in the READ!\n");
                 fprintf(stderr, "[*] File%d: the line number of the error read is %lld!\n", i+1, line_num);
                 return -3;
+            default:
+                f_cache->n++; break;  /* normal reading of the fastq file (ret==1) */
             }
         }
     }
@@ -234,7 +226,7 @@ static int fastq_cache_read(FileObject *file_obj, cache_t *fastq_cache)
 }
 
 
-int main(int argc, char **argv)
+int main(const int argc, char **argv)
 {
     char buf[32];
 
@@ -244,27 +236,22 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    /* check the file type before calculate the memory */
-    FILE *list_fp = fopen(argv[1], "r");
-    if (!list_fp) {
-        fprintf(stderr, "[SysError:main:002] failed to open the file list of %s\n", get_path_basename(argv[1]));
-        exit(-1);
-    }
-
-    if (file_type_check(argv[1], stderr) < 0) {
+    FileObject *file_obj = read_file_list(argv[1]);
+    if (file_type_check(file_obj, stderr) < 0) {
         exit(-2);
     }
 
-    FileObject *file_obj = read_file_list(argv[1]);
     cache_t *fastq_cache = fastq_cache_init(file_obj->n);
-
-    int status = fastq_cache_read(file_obj, fastq_cache);
+    const int status = fastq_cache_read(file_obj, fastq_cache);
     if (status < 0) {
-        fprintf(stderr, "[%s] Failed to read the fastq file\n", get_current_time(buf));
+        fprintf(stderr, "[%s] Failed to read the fastq file!\n", get_current_time(buf));
         exit(-3);
     }
 
-    uint64_t mem_size = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
+    /* check whether the order of the single-cell files is correct */
+
+
+    /* estimate the memory needed by the bloom filter */
+    const uint64_t mem_size = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
     fprintf(stdout, "Memory: %llu\n", mem_size);
 }
-

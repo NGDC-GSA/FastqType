@@ -63,8 +63,8 @@ FileObject *read_file_list(char *file_list)
 /* eg. get_str_ends('/home/xlzh/test.fq.gz', '.gz') -> true */
 static int get_str_ends(char *str, char *sub)
 {
-    int i=strlen(str)-1;
-    int j=strlen(sub)-1;
+    int i = (int)strlen(str)-1;
+    int j = (int)strlen(sub)-1;
 
     if(i<j) return 0;
     for(; i>=0 && j>=0; i--,j--){
@@ -83,9 +83,7 @@ char *get_path_basename(char *file_path)
       #define _PDELIM_ 47 // '/'
     #endif
 
-    char *start;
-
-    start = strrchr(file_path, _PDELIM_);
+    char *start = strrchr(file_path, _PDELIM_);
     if (start != NULL) return start + 1;
 
     return file_path;
@@ -221,7 +219,7 @@ int gz_read_util(GzStream *gz, char delimiter, kstring_t *ks_str, int max_length
 }
 
 
-void gz_stream_destory(GzStream *gz)
+void gz_stream_destroy(GzStream *gz)
 {
     if (gz->is_write){  /* write gz or gz2 file */
         if(gz->gz_fp){

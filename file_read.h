@@ -23,7 +23,8 @@
 #ifndef KSTRING_T
 #define KSTRING_T kstring_t
 typedef struct __kstring_t {
-	size_t l, m;
+	size_t l;
+	size_t m;
 	char *s;
 } kstring_t;
 #endif
@@ -60,7 +61,8 @@ typedef struct {
   @field  gz_hd       file GzStream handle for each gz/bz2 file
  */
 typedef struct {
-    int n, n_max;
+    int n;
+    int n_max;
     char **file_name;
     GzStream **gz_hd;
 } FileObject;
@@ -88,7 +90,7 @@ int gz_read_util(GzStream *gz, char delimiter, kstring_t *ks_str, int max_length
   @param  gz          GzStream object
   @return             
  */
-void gz_stream_destory(GzStream *gz);
+void gz_stream_destroy(GzStream *gz);
 
 
 /*! @function: read fastq file list
