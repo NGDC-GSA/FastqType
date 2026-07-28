@@ -21,35 +21,6 @@
 #define FASTQ_TYPE_VERSION "2.0.0"
 
 
-/*! @typedef read_t
-  @abstract the read object
-  @field  name           the name of read('@' will be repleaced with pair_marker if 'pair_check' is given). 
-                         eg. @ST-E00126:HWM7:3173:1784 2:N:AAGAC -> 2ST-E00126:HWM7:3173:1784
-  @field  seq            the sequence of the read
-  @field  comment        the comment of the read, usually is a character of '+'
-  @field  qual           the quality of the read
- */
-typedef struct {
-    kstring_t name;
-    kstring_t seq;
-    kstring_t comment;
-    kstring_t qual;
-} read_t;
-
-
-/*! @typedef cache_t
-  @abstract the fastq cache
-  @field  n        the number of read object
-  @field  n_max    the max size of the cache
-  @field  reads    the pointer to the reads object array
- */
-typedef struct {
-    size_t n;
-    size_t n_max;
-    read_t *reads;
-} cache_t;
-
-
 static char *get_current_time(char *time_buf)
 {
     time_t c_time;
@@ -90,7 +61,7 @@ static long get_max_file_size(const FileObject *file_obj, int *max_file_idx)
 }
 
 
-static uint64_t bloom_memory_estimate(FileObject *file_obj, cache_t *fastq_cache, int compress_ratio)
+static uint64_t bloom_memory_estimate(const FileObject *file_obj, const cache_t *fastq_cache, const int compress_ratio)
 {
     /* get the max_file_size */
     int max_file_idx;
@@ -198,12 +169,12 @@ static int fastq_cache_read(const FileObject *file_obj, cache_t *fastq_cache)
             case -1:
                 return -1;  /* unexpected end of fastq file */
             case -2:
-                line_num = (f_cache->n) * 4 + 1;
+                line_num = f_cache->n * 4 + 1;
                 fprintf(stderr, "[FormatError:fastq_cache_read:201] incomplete fastq read '%s' is detected!\n", f_cache->reads[idx].name.s);
                 fprintf(stderr, "[*] File%d: the line number of the error read is %lld!\n", i+1, line_num);
                 return -2;
             case -3: /* failed to detect line breaks('\n') */
-                line_num = (f_cache->n) * 4 + 1;
+                line_num = f_cache->n * 4 + 1;
                 fprintf(stderr, "[FormatError:fastq_cache_read:212] failed to detect line breaks('\\n') in the READ!\n");
                 fprintf(stderr, "[*] File%d: the line number of the error read is %lld!\n", i+1, line_num);
                 return -3;
@@ -229,6 +200,7 @@ static int fastq_cache_read(const FileObject *file_obj, cache_t *fastq_cache)
 int main(const int argc, char **argv)
 {
     char buf[32];
+    int status = 0;
 
     if (argc < 2) {
         fprintf(stderr, "Author: XiaolongZhang (zhangxiaolong@big.ac.cn)\n");
@@ -236,20 +208,28 @@ int main(const int argc, char **argv)
         exit(-1);
     }
 
-    FileObject *file_obj = read_file_list(argv[1]);
+    const FileObject *file_obj = read_file_list(argv[1]);
     if (file_type_check(file_obj, stderr) < 0) {
         exit(-2);
     }
 
     cache_t *fastq_cache = fastq_cache_init(file_obj->n);
-    const int status = fastq_cache_read(file_obj, fastq_cache);
+    status = fastq_cache_read(file_obj, fastq_cache);
     if (status < 0) {
         fprintf(stderr, "[%s] Failed to read the fastq file!\n", get_current_time(buf));
         exit(-3);
     }
 
-    /* check whether the order of the single-cell files is correct */
+    if (file_obj->n <= 2)  /* normal single-end or pair-end fastq file */
+        fprintf(stdout, "SingleCell: Not Single Cell!\n");
 
+    else {  /* check whether the order of the single-cell files is correct */
+        if (single_cell_check(file_obj, fastq_cache) < 0) {
+            fprintf(stdout, "SingleCell: Check Failed!\n");
+            exit(-3);
+        }
+        fprintf(stdout, "SingleCell: Check Passed!\n");
+    }
 
     /* estimate the memory needed by the bloom filter */
     const uint64_t mem_size = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);

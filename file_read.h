@@ -30,6 +30,35 @@ typedef struct __kstring_t {
 #endif
 
 
+/*! @typedef read_t
+ @abstract the read object
+ @field  name           the name of read('@' will be repleaced with pair_marker if 'pair_check' is given).
+                        eg. @ST-E00126:HWM7:3173:1784 2:N:AAGAC -> 2ST-E00126:HWM7:3173:1784
+ @field  seq            the sequence of the read
+ @field  comment        the comment of the read, usually is a character of '+'
+ @field  qual           the quality of the read
+*/
+typedef struct {
+    kstring_t name;
+    kstring_t seq;
+    kstring_t comment;
+    kstring_t qual;
+} read_t;
+
+
+/*! @typedef cache_t
+ @abstract the fastq cache
+ @field  n        the number of read object
+ @field  n_max    the max size of the cache
+ @field  reads    the pointer to the reads object array
+*/
+typedef struct {
+    size_t n;
+    size_t n_max;
+    read_t *reads;
+} cache_t;
+
+
 /*! @typedef GzStream
  @abstract structure for gz/bz2 handle
  @field gz_fp        file handle of *.gz
