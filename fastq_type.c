@@ -18,7 +18,18 @@
 #define BLOOM_ERROR 0.000000001  /* probability of false positive for bloomfilter */
 #define MAX_READ_LENGTH 52428800  /* 50MB */
 #define COMPRESS_RATIO 10.0  /* default compression ratio */
-#define FASTQ_TYPE_VERSION "2.0.0"
+#define FASTQ_TYPE_VERSION "2.0.1"
+
+
+/*! @typedef phred_t
+  @abstract the phred object for phred check
+  @field  phred             the phred value of the sequence
+  @field  qual_table        table of base quality distribution
+ */
+typedef struct {
+    uint64_t phred;
+    uint64_t qual_table[256];
+} phred_t;
 
 
 static char *get_current_time(char *time_buf)
@@ -197,6 +208,73 @@ static int fastq_cache_read(const FileObject *file_obj, cache_t *fastq_cache)
 }
 
 
+static int windows_break_check(const cache_t *fastq_cache, const int n_file)
+{
+    read_t *f_reads;
+    kstring_t *r_seq;  /* sequence of the read */
+
+    for (int idx=0; idx < n_file; idx++) {
+        f_reads = fastq_cache[idx].reads;
+
+        for (int i=0; i < fastq_cache[idx].n; i++) {
+            r_seq = &f_reads[i].seq;
+            if (r_seq->s[r_seq->l-1] == '\r') goto error;
+        }
+    }
+    return 1;
+
+    error:
+        fprintf(stderr,
+                "[FormatError:windows_break_check:203] "
+                "windows break ('\\r\\n') is detected in the fastq file!\n");
+    return 0;
+}
+
+
+static int quality_phred_check(const cache_t *fastq_cache, const int n_file)
+{
+    uint64_t *f_qual_table;  /* quality table of the file */
+    phred_t *phred_obj = calloc(n_file, sizeof(phred_t));
+
+    /* quality of the read */
+    for (int idx=0; idx < n_file; idx++) {
+        f_qual_table = phred_obj[idx].qual_table;
+        const read_t *f_reads = fastq_cache[idx].reads;
+
+        /* record the quality and its number */
+        for (int i=0; i < fastq_cache[idx].n; i++) {
+            const kstring_t *r_qual = &f_reads[i].qual;
+            for (int j=0; j < r_qual->l; j++) f_qual_table[r_qual->s[j]]++;
+        }
+    }
+
+    /* get the phred of each file */
+    for (int idx=0; idx < n_file; idx++) {
+        uint64_t phred33 = 0;
+        uint64_t phred64 = 0;
+        f_qual_table = phred_obj[idx].qual_table;
+        for (int i=33; i < 59; i++) phred33 += f_qual_table[i];  /* only existed in phred33 */
+        for (int i=75; i < 104; i++) phred64 += f_qual_table[i];  /* only existed in phred64 */
+
+        /* check phred and clean the temp value within  f_qual_table */
+        if (phred64 > 0 && phred33 == 0) phred_obj[idx].phred = 64;
+    }
+
+    /* check whether the phred of all files are same */
+    for (int idx=1; idx < n_file; idx++) {
+        /* different phred existed */
+        if (phred_obj[idx].phred != phred_obj[0].phred) {
+            fprintf(stderr, "[FormatError:phred_check:204] the phred value of the given files is different!\n");
+            for (int f_idx=0; f_idx < n_file; f_idx++) {
+                fprintf(stderr, "  [*] File %d: Phred%lld\n", f_idx, phred_obj[f_idx].phred);
+            }
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 int main(const int argc, char **argv)
 {
     char buf[32];
@@ -219,6 +297,10 @@ int main(const int argc, char **argv)
         fprintf(stderr, "[%s] Failed to read the fastq file!\n", get_current_time(buf));
         exit(-3);
     }
+
+    /* check the windows breaker and phred distribution */
+    windows_break_check(fastq_cache, file_obj->n);
+    quality_phred_check(fastq_cache, file_obj->n);
 
     if (file_obj->n <= 2)  /* normal single-end or pair-end fastq file */
         fprintf(stdout, "SingleCell: Not Single Cell!\n");

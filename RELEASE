@@ -35,3 +35,11 @@ Email:   zhangxiaolong@big.ac.cn
 Descrip:
     1. move the project from fastq_mem to fastq_type
     2. allow to check whether the fastq is type of single-cell
+
+===================== Version2.0.1 =====================
+Version: 2.0.1
+Date:    2026-07-31
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. move the function of windows_break_check and phred_check to fastq_type
