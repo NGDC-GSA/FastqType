@@ -14,11 +14,11 @@
 #include "file_read.h"
 #include "file_type.h"
 
-#define CACHE_SIZE 10000  /* number of cached read object for each file */
+#define CACHE_SIZE 100000  /* number of cached read object for each file */
 #define BLOOM_ERROR 0.000000001  /* probability of false positive for bloomfilter */
 #define MAX_READ_LENGTH 52428800  /* 50MB */
 #define COMPRESS_RATIO 10.0  /* default compression ratio */
-#define FASTQ_TYPE_VERSION "2.0.1"
+#define FASTQ_TYPE_VERSION "2.0.2"
 
 
 /*! @typedef phred_t
@@ -30,6 +30,17 @@ typedef struct {
     uint64_t phred;
     uint64_t qual_table[256];
 } phred_t;
+
+
+/*! @typedef estimate_t
+  @abstract the memory estimate of the bloom filter
+  @field  mem_size          the estimated memory size of the bloom filter (in GB)
+  @field  max_reads         the estimated maximum number of reads of the bloom filter (in million)
+ */
+typedef struct {
+    uint64_t mem_size;
+    uint64_t max_reads;
+} estimate_t;
 
 
 static char *get_current_time(char *time_buf)
@@ -72,8 +83,10 @@ static long get_max_file_size(const FileObject *file_obj, int *max_file_idx)
 }
 
 
-static uint64_t bloom_memory_estimate(const FileObject *file_obj, const cache_t *fastq_cache, const int compress_ratio)
+static estimate_t bloom_memory_estimate(const FileObject *file_obj, const cache_t *fastq_cache, const int compress_ratio)
 {
+    estimate_t est;
+
     /* get the max_file_size */
     int max_file_idx;
     const long file_size = get_max_file_size(file_obj, &max_file_idx);
@@ -104,8 +117,10 @@ static uint64_t bloom_memory_estimate(const FileObject *file_obj, const cache_t 
     /* m = -1 * (n * ln(p)) / ln(2)^2 */
     uint64_t mem_size = (uint64_t)ceil(-1 * log(BLOOM_ERROR) * (double)max_item / 0.6185);  /* in bits */
     mem_size = mem_size / 8 / 1073741824;  /* in GB */
+    est.mem_size = mem_size - mem_size % 5 + 5;
+    est.max_reads = max_item / 1000000;  /* convert to million */
 
-    return mem_size - mem_size % 4 + 4;
+    return est;
 }
 
 
@@ -314,6 +329,7 @@ int main(const int argc, char **argv)
     }
 
     /* estimate the memory needed by the bloom filter */
-    const uint64_t mem_size = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
-    fprintf(stdout, "Memory: %llu\n", mem_size);
+    const estimate_t est = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
+    fprintf(stdout, "MaximumReads: %llu (Million)\n", est.max_reads);
+    fprintf(stdout, "BloomMemory: %llu (GB)\n", est.mem_size);
 }
