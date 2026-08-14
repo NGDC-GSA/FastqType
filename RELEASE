@@ -60,3 +60,15 @@ Author:  xiaolong zhang
 Email:   zhangxiaolong@big.ac.cn
 Descrip:
     1. output the phred value of the given fastq files
+
+
+===================== Version2.0.4 =====================
+Version: 2.0.4
+Date:    2026-08-14
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. fix the bug that the phred value of phred33 fastq files is reported as 0
+    2. change the type of n_file in quality_phred_check to uint32_t to avoid the
+       -Walloc-size-larger-than warning during compilation
+

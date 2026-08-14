@@ -18,7 +18,7 @@
 #define BLOOM_ERROR 0.000000001  /* probability of false positive for bloomfilter */
 #define MAX_READ_LENGTH 52428800  /* 50MB */
 #define COMPRESS_RATIO 10.0  /* default compression ratio */
-#define FASTQ_TYPE_VERSION "2.0.3"
+#define FASTQ_TYPE_VERSION "2.0.4"
 
 
 /*! @typedef phred_t
@@ -246,13 +246,14 @@ static int windows_break_check(const cache_t *fastq_cache, const int n_file)
 }
 
 
-static int32_t quality_phred_check(const cache_t *fastq_cache, const int n_file)
+static int32_t quality_phred_check(const cache_t *fastq_cache, const uint32_t n_file)
 {
     uint64_t *f_qual_table;  /* quality table of the file */
     phred_t *phred_obj = calloc(n_file, sizeof(phred_t));
 
     /* quality of the read */
     for (int idx=0; idx < n_file; idx++) {
+        phred_obj[idx].phred = 33;  /* set default phred value */
         f_qual_table = phred_obj[idx].qual_table;
         const read_t *f_reads = fastq_cache[idx].reads;
 
