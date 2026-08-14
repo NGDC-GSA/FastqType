@@ -52,3 +52,11 @@ Email:   zhangxiaolong@big.ac.cn
 Descrip:
     1. estimate the bloomfiler size within this tool
     2. the modification ensures that the tool must be called before fastq_check
+
+===================== Version2.0.3 =====================
+Version: 2.0.3
+Date:    2026-08-14
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. output the phred value of the given fastq files

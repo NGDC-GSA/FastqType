@@ -18,7 +18,7 @@
 #define BLOOM_ERROR 0.000000001  /* probability of false positive for bloomfilter */
 #define MAX_READ_LENGTH 52428800  /* 50MB */
 #define COMPRESS_RATIO 10.0  /* default compression ratio */
-#define FASTQ_TYPE_VERSION "2.0.2"
+#define FASTQ_TYPE_VERSION "2.0.3"
 
 
 /*! @typedef phred_t
@@ -246,7 +246,7 @@ static int windows_break_check(const cache_t *fastq_cache, const int n_file)
 }
 
 
-static int quality_phred_check(const cache_t *fastq_cache, const int n_file)
+static int32_t quality_phred_check(const cache_t *fastq_cache, const int n_file)
 {
     uint64_t *f_qual_table;  /* quality table of the file */
     phred_t *phred_obj = calloc(n_file, sizeof(phred_t));
@@ -283,10 +283,11 @@ static int quality_phred_check(const cache_t *fastq_cache, const int n_file)
             for (int f_idx=0; f_idx < n_file; f_idx++) {
                 fprintf(stderr, "  [*] File %d: Phred%lld\n", f_idx, phred_obj[f_idx].phred);
             }
-            return 0;
+            return -1;
         }
     }
-    return 1;
+
+    return (int32_t)phred_obj->phred;
 }
 
 
@@ -313,10 +314,7 @@ int main(const int argc, char **argv)
         exit(-3);
     }
 
-    /* check the windows breaker and phred distribution */
-    windows_break_check(fastq_cache, file_obj->n);
-    quality_phred_check(fastq_cache, file_obj->n);
-
+    /* check whether the input files are single-cell */
     if (file_obj->n <= 2)  /* normal single-end or pair-end fastq file */
         fprintf(stdout, "SingleCell: Not Single Cell!\n");
 
@@ -327,6 +325,11 @@ int main(const int argc, char **argv)
         }
         fprintf(stdout, "SingleCell: Check Passed!\n");
     }
+
+    /* check the windows breaker and phred distribution */
+    windows_break_check(fastq_cache, file_obj->n);
+    const int32_t phred_value = quality_phred_check(fastq_cache, file_obj->n);
+    fprintf(stdout, "PhredValue: %d!\n", phred_value);
 
     /* estimate the memory needed by the bloom filter */
     const estimate_t est = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
