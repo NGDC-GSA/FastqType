@@ -1,4 +1,10 @@
-.idea/
 *.o
-fastq_check
+fastqtype
 .DS_Store
+
+.vscode/
+.claude/
+.idea/
+
+/build/
+/cmake-build-debug/
