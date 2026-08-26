@@ -14,11 +14,11 @@
 #include "file_read.h"
 #include "file_type.h"
 
-#define CACHE_SIZE 100000  /* number of cached read object for each file */
+#define CACHE_SIZE 10000  /* number of cached read object for each file */
 #define BLOOM_ERROR 0.000000001  /* probability of false positive for bloomfilter */
 #define MAX_READ_LENGTH 52428800  /* 50MB */
 #define COMPRESS_RATIO 10.0  /* default compression ratio */
-#define FASTQ_TYPE_VERSION "2.0.4"
+#define FASTQ_TYPE_VERSION "2.0.5"
 
 
 /*! @typedef phred_t
@@ -299,7 +299,7 @@ int main(const int argc, char **argv)
 
     if (argc < 2) {
         fprintf(stderr, "Author: XiaolongZhang (zhangxiaolong@big.ac.cn)\n");
-        fprintf(stderr, "usage: fastq_type (v%s) <input_list.txt>\n", FASTQ_TYPE_VERSION);
+        fprintf(stderr, "usage: fastqtype (v%s) <input_list.txt>\n", FASTQ_TYPE_VERSION);
         exit(-1);
     }
 
@@ -330,7 +330,7 @@ int main(const int argc, char **argv)
     /* check the windows breaker and phred distribution */
     windows_break_check(fastq_cache, file_obj->n);
     const int32_t phred_value = quality_phred_check(fastq_cache, file_obj->n);
-    fprintf(stdout, "PhredValue: %d!\n", phred_value);
+    fprintf(stdout, "PhredValue: %d\n", phred_value);
 
     /* estimate the memory needed by the bloom filter */
     const estimate_t est = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
