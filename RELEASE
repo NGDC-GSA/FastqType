@@ -72,3 +72,16 @@ Descrip:
     2. change the type of n_file in quality_phred_check to uint32_t to avoid the
        -Walloc-size-larger-than warning during compilation
 
+===================== Version2.0.5 =====================
+Version: 2.0.5
+Date:    2026-08-26
+Author:  xiaolong zhang
+Email:   zhangxiaolong@big.ac.cn
+Descrip:
+    1. bundle the dependencies (zlib-ng and bzip2) into the project and build
+       them from source, so no system library (zlib/libbz2) is needed
+    2. migrate the build system from makefile to cmake, and the old makefile
+       has been removed
+    3. add a github action (release.yml) that builds fully static executables
+       for linux amd64 and arm64 and publishes them as a github release
+

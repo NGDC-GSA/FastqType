@@ -4,18 +4,17 @@ A lightweight tool for detecting the library type of FASTQ sequencing data and e
 
 
 __PROGRAM: FastqType__<br>
-__VERSION: 2.0.0__<br>
+__VERSION: 2.0.5__<br>
 __PLATFORM: Linux / macOS__<br>
-__ARCHITECTURE: x86_64__<br>
-__COMPILER: gcc (C99)__<br>
+__ARCHITECTURE: x86_64 / ARM64__<br>
+__COMPILER: gcc / clang (C99)__<br>
 __AUTHOR: Xiaolong Zhang__<br>
 __EMAIL: zhangxiaolong@big.ac.cn__<br>
 __DATE:   2024-04-26__<br>
-__UPDATE: 2026-07-20__<br>
+__UPDATE: 2026-08-26__<br>
 __DEPENDENCE__<br>
-* __GNU make and gcc__<br>
-* __zlib__<br>
-* __libbz2__<br>
+* __cmake (>= 3.16) and a C compiler (gcc or clang)__<br>
+* __zlib / libbz2 are bundled in the `external/` directory and built from source, no system library is needed__<br>
 
 
 
@@ -36,39 +35,42 @@ __DEPENDENCE__<br>
 
 ## 2.1 Dependencies
 
-Before building FastqType, ensure the following libraries are installed:
+All dependencies (zlib-ng and bzip2) are bundled in the `external/` directory and
+built from source together with FastqType, so no system library is required.
+Only a C compiler and CMake are needed:
 
-* **zlib** — required for gzip-compressed file I/O
-* **libbz2** — required for bzip2-compressed file I/O
+* **CMake** (>= 3.16)
+* **A C compiler** (gcc or clang, C99)
 
 ## 2.2 Compilation
 
 ```bash
-# Build with optimization (release mode, default)
-make
+# Configure + build (Release mode by default)
+cmake -S . -B build
+cmake --build build -j
 
 # Build with debug symbols
-# Edit the makefile and set DEBUG = 1, then run:
-make
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
 
 # Clean build artifacts
-make clean
+rm -rf build
 ```
 
-The compiled binary `fastq_type` will be generated in the current directory.
+The compiled binary `fastqtype` will be generated at `build/fastqtype`.
 
 ## 2.3 Build Options
 
-| Switch  | Default | Description                                                        |
-|---------|---------|--------------------------------------------------------------------|
-| `DEBUG` | `0`     | `1`: compile with `-g -O0` for debugging; `0`: compile with `-O3` |
+| Option              | Default   | Description                                        |
+|---------------------|-----------|----------------------------------------------------|
+| `CMAKE_BUILD_TYPE`  | `Release` | `Release`: compile with `-O3`; `Debug`: compile with `-g -O0` |
 
 
 
 # 3. Usage
 
 ```
-fastq_type <input_list.txt>
+fastqtype <input_list.txt>
 ```
 
 **Arguments:**
@@ -109,7 +111,7 @@ FastqType determines the library type based on the number of input files:
 
 - **1 or 2 files:** Standard single-end or paired-end FASTQ data. Outputs:
   ```
-  SingleCellCheck: Not Single Cell!
+  SingleCell: Not Single Cell!
   ```
 
 - **4 files:** Treated as single-cell data. The program detects the library type from filename tags and validates file ordering:
@@ -131,7 +133,8 @@ FastqType determines the library type based on the number of input files:
 FastqType estimates the memory (in GB) needed for a Bloom filter based on the largest input file size and average read length. This helps users plan resource allocation for downstream deduplication tools.
 
 ```
-Memory: <n> GB
+MaximumReads: <n> (Million)
+BloomMemory: <n> (GB)
 ```
 
 
@@ -173,29 +176,90 @@ A typical successful run prints something like:
 
 ```
 SingleCell: Check Passed!
-Memory: 16 GB
+PhredValue: 33
+MaximumReads: 123 (Million)
+BloomMemory: 16 (GB)
 ```
 
 Or for non-single-cell data:
 
 ```
-SingleCellCheck: Not Single Cell!
-Memory: 8 GB
+SingleCell: Not Single Cell!
+PhredValue: 33
+MaximumReads: 456 (Million)
+BloomMemory: 8 (GB)
 ```
 
 
 
 # 6. Error Handling
 
-FastqType reports errors with descriptive tags for easy diagnosis:
+FastqType reports errors to stderr in the format `[<Type>:<function>:<code>] <message>`, e.g.:
 
-| Error Tag      | Description                                               |
-|----------------|-----------------------------------------------------------|
-| `SysError`     | System-level errors (cannot open file, truncated file)    |
-| `FileError`    | File format errors (unsupported format, renamed extension)|
-| `FormatError`  | FASTQ format errors (incomplete reads, tag detection)     |
+```
+[SysError:gz_stream_open:008] failed to open gzip file of (sample_R1.fastq.gz)!
+[FormatError:fastq_cache_read:201] incomplete fastq read '@read1' is detected!
+```
 
-For single-cell data, when file ordering is incorrect, both the expected and observed orders are printed to help users reorder their input files.
+| Error Tag     | Description                                                |
+|---------------|------------------------------------------------------------|
+| `SysError`    | System-level errors (cannot open file, out of memory, ...) |
+| `FileError`   | File format errors (unsupported format, renamed extension, truncated file) |
+| `FormatError` | FASTQ format errors (incomplete reads, phred mismatch, single-cell ordering) |
+
+## 6.1 SysError (system-level errors, 001 - 019)
+
+| Code | Origin          | Message                                                                 |
+|------|-----------------|-------------------------------------------------------------------------|
+| `001` | `file_name_copy` | failed to malloc memory when copy file name `XXX`!                    |
+| `002` | `read_file_list` | failed to open the file list of `XXX`                                 |
+| `003` | `gz_stream_open` | operate mode(`XXX`) error, it should be "w" or "r".                   |
+| `004` | `gz_stream_open` | can not open bz2 file of (`XXX`)!                                     |
+| `005` | `gz_stream_open` | the file of (`XXX`) does not seem to be a .bz2 file!                  |
+| `006` | `gz_stream_open` | the file of (`XXX`) is neither a real bzip2(.bz2) file nor a stander fastq file! |
+| `007` | `gz_stream_open` | failed to open file of (`XXX`)!                                       |
+| `008` | `gz_stream_open` | failed to open gzip file of (`XXX`)!                                  |
+| `009` | `gz_stream_open` | the file of (`XXX`) is neither a real gzip(.gz) file nor a stander fastq file! |
+| `010` | `gz_stream_open` | failed to create file of (`XXX`) in .gz format!                       |
+| `011` | `gz_stream_open` | failed to create file of (`XXX`)!                                     |
+| `012` | `gz_stream_open` | failed to create file of (`XXX`) in .bz2 format!                      |
+| `013` | `gz_stream_open` | failed to create a normal file of (`XXX`)!                            |
+| `014` | `gz_read_util`   | read length can not be longer than `XXX`!                             |
+| `015` | `gz_read_util`   | failed to reallocated memory!                                         |
+| `016` | `gz_stream_open` | failed to open a normal file of (`XXX`)!                              |
+| `019` | `get_max_file_size` | failed to read the given file `XXX`                                |
+
+## 6.2 FileError (file format errors, 101 - 107)
+
+| Code | Origin          | Message                                                                 |
+|------|-----------------|-------------------------------------------------------------------------|
+| `101` | `file_type_check` | unexpected end of fastq file `XXX` (truncated file) is detected!      |
+| `102` | `file_type_check` | unsupported file format (.XXX), only file type of (.gz) and (.bz2) is available (Err: `XXX`)! |
+| `103` | `file_type_check` | unsupported gzip file format of (.XXX.gz), please do not rename the original suffix of the filename (Err: `XXX`)! |
+| `104` | `file_type_check` | the file format of `XXX` may be (.`XXX`.gz), please do not rename the original suffix of the filename! |
+| `105` | `file_type_check` | unsupported bzip2 file format of (.XXX.bz2), please do not rename the original suffix of the filename (Err: `XXX`)! |
+| `106` | `file_type_check` | the file format of `XXX` may be (.`XXX`.bz2), please do not rename the original suffix of the filename! |
+| `107` | `file_type_check` | the file format of `XXX` may be (.`XXX`), please do not rename the original suffix of the filename! |
+
+## 6.3 FormatError (fastq format errors, 201 - 217)
+
+| Code | Origin                  | Message                                                                 |
+|------|-------------------------|-------------------------------------------------------------------------|
+| `201` | `fastq_cache_read`      | incomplete fastq read 'XXX' is detected!                               |
+| `202` | `fastq_cache_read`      | the number of reads cached is different!                               |
+| `203` | `windows_break_check`   | windows break ('\r\n') is detected in the fastq file!                  |
+| `204` | `phred_check`           | the phred value of the given files is different!                       |
+| `212` | `fastq_cache_read`      | failed to detect line breaks('\n') in the READ!                        |
+| `213` | `single_cell_check`     | expected 4 single-cell files, but got `XXX`!                           |
+| `214` | `single_cell_check`     | unrecognized read tag is detected from `XXX`!                          |
+| `215` | `single_cell_check`     | duplicated tag (`XXX`) is detected!                                    |
+| `216` | `single_cell_check`     | unsupported single-cell tag combination!                               |
+| `217` | `single_cell_check`     | incorrect single-cell file order detected!                             |
+
+**Notes:**
+
+* Codes `205` - `211` are reserved by the downstream FastqCheck tool and are not emitted by FastqType.
+* For single-cell data, when file ordering is incorrect (code `217`), both the expected and observed orders (with average read lengths) are printed to help users reorder their input files.
 
 
 
