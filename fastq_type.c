@@ -8,9 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <time.h>
+#include <inttypes.h>
 #include <math.h>
 
+#include "version.h"
 #include "file_read.h"
 #include "file_type.h"
 
@@ -18,7 +21,6 @@
 #define BLOOM_ERROR 0.000000001  /* probability of false positive for bloomfilter */
 #define MAX_READ_LENGTH 52428800  /* 50MB */
 #define COMPRESS_RATIO 10.0  /* default compression ratio */
-#define FASTQ_TYPE_VERSION "2.0.5"
 
 
 /*! @typedef phred_t
@@ -197,12 +199,12 @@ static int fastq_cache_read(const FileObject *file_obj, cache_t *fastq_cache)
             case -2:
                 line_num = f_cache->n * 4 + 1;
                 fprintf(stderr, "[FormatError:fastq_cache_read:201] incomplete fastq read '%s' is detected!\n", f_cache->reads[idx].name.s);
-                fprintf(stderr, "[*] File%d: the line number of the error read is %lld!\n", i+1, line_num);
+                fprintf(stderr, "[*] File%d: the line number of the error read is %" PRIu64 "!\n", i+1, line_num);
                 return -2;
             case -3: /* failed to detect line breaks('\n') */
                 line_num = f_cache->n * 4 + 1;
                 fprintf(stderr, "[FormatError:fastq_cache_read:212] failed to detect line breaks('\\n') in the READ!\n");
-                fprintf(stderr, "[*] File%d: the line number of the error read is %lld!\n", i+1, line_num);
+                fprintf(stderr, "[*] File%d: the line number of the error read is %" PRIu64 "!\n", i+1, line_num);
                 return -3;
             default:
                 f_cache->n++; break;  /* normal reading of the fastq file (ret==1) */
@@ -213,7 +215,7 @@ static int fastq_cache_read(const FileObject *file_obj, cache_t *fastq_cache)
     for (int i=1; i < file_obj->n; i++) {
         if(fastq_cache[i].n != fastq_cache[0].n) {
             fprintf(stderr, "[FormatError:fastq_cache_read:202] the number of reads cached is different!\n");
-            fprintf(stderr, "[*] File1: %lld  <--> File%d: %lld\n", (int64_t)fastq_cache[0].n, i+1, (int64_t)fastq_cache[i].n);
+            fprintf(stderr, "[*] File1: %" PRId64 "  <--> File%d: %" PRId64 "\n", (int64_t)fastq_cache[0].n, i+1, (int64_t)fastq_cache[i].n);
             return -4;
         }
     }
@@ -282,7 +284,7 @@ static int32_t quality_phred_check(const cache_t *fastq_cache, const uint32_t n_
         if (phred_obj[idx].phred != phred_obj[0].phred) {
             fprintf(stderr, "[FormatError:phred_check:204] the phred value of the given files is different!\n");
             for (int f_idx=0; f_idx < n_file; f_idx++) {
-                fprintf(stderr, "  [*] File %d: Phred%lld\n", f_idx, phred_obj[f_idx].phred);
+                fprintf(stderr, "  [*] File %d: Phred%" PRIu64 "\n", f_idx, phred_obj[f_idx].phred);
             }
             return -1;
         }
@@ -299,7 +301,7 @@ int main(const int argc, char **argv)
 
     if (argc < 2) {
         fprintf(stderr, "Author: XiaolongZhang (zhangxiaolong@big.ac.cn)\n");
-        fprintf(stderr, "usage: fastqtype (v%s) <input_list.txt>\n", FASTQ_TYPE_VERSION);
+        fprintf(stderr, "usage: fastqtype (v%s) <input_list.txt>\n", FASTQ_TYPE_VERSION_STRING);
         exit(-1);
     }
 
@@ -334,6 +336,6 @@ int main(const int argc, char **argv)
 
     /* estimate the memory needed by the bloom filter */
     const estimate_t est = bloom_memory_estimate(file_obj, fastq_cache, COMPRESS_RATIO);
-    fprintf(stdout, "MaximumReads: %llu (Million)\n", est.max_reads);
-    fprintf(stdout, "BloomMemory: %llu (GB)\n", est.mem_size);
+    fprintf(stdout, "MaximumReads: %" PRIu64 " (Million)\n", est.max_reads);
+    fprintf(stdout, "BloomMemory: %" PRIu64 " (GB)\n", est.mem_size);
 }
