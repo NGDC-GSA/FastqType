@@ -88,9 +88,12 @@ Descrip:
 ===================== Version2.0.6 (2026-09-01) =====================
 ### Features
 
-- Added `version.h` as the single source of the version number; both the binary and the release workflow now read the version from it
-- Made the codebase cross-platform (**Windows** / macOS / Linux): replaced the non-portable `%llu` / `%lld` format specifiers with the `PRIu64` / `PRId64` macros from `<inttypes.h>`
-- Reworked the GitHub Actions release workflow to build Linux (amd64/arm64, fully static musl), macOS (amd64/arm64) and Windows (amd64/arm64) binaries in parallel and publish them as a GitHub release
+- Added `version.h` as the single source of the version number;
+  both the binary and the release workflow now read the version from it
+- Made the codebase cross-platform (**Windows** / macOS / Linux): replaced the non-portable `%llu` / `%lld`
+  format specifiers with the `PRIu64` / `PRId64` macros from `<inttypes.h>`
+- Reworked the GitHub Actions release workflow to build Linux (amd64/arm64, fully static musl),
+  macOS (amd64/arm64) and Windows (amd64/arm64) binaries in parallel and publish them as a GitHub release
 
 ### Bug Fixes
 
