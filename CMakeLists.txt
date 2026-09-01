@@ -35,6 +35,12 @@ set(ENABLE_SHARED_LIB OFF CACHE BOOL "Build libbz2 as a shared library" FORCE)
 set(ENABLE_TESTS OFF CACHE BOOL "Build/enable unit tests" FORCE)
 set(ENABLE_DOCS OFF CACHE BOOL "Generate documentation" FORCE)
 add_subdirectory(external/bzip2)  # target: bz2_static
+# disable the warnings of bzip2 during compile
+if(MSVC)
+    target_compile_options(bz2_static PRIVATE /w)
+else()
+    target_compile_options(bz2_static PRIVATE -w)
+endif()
 
 # ---- FastqType -----------------------------------------------------------
 add_executable(fastqtype
