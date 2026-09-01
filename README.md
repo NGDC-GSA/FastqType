@@ -4,14 +4,14 @@ A lightweight tool for detecting the library type of FASTQ sequencing data and e
 
 
 __PROGRAM: FastqType__<br>
-__VERSION: 2.0.5__<br>
-__PLATFORM: Linux / macOS__<br>
+__VERSION: 2.0.6__<br>
+__PLATFORM: Linux / macOS / Windows__<br>
 __ARCHITECTURE: x86_64 / ARM64__<br>
 __COMPILER: gcc / clang (C99)__<br>
 __AUTHOR: Xiaolong Zhang__<br>
 __EMAIL: zhangxiaolong@big.ac.cn__<br>
 __DATE:   2024-04-26__<br>
-__UPDATE: 2026-08-26__<br>
+__UPDATE: 2026-09-01__<br>
 __DEPENDENCE__<br>
 * __cmake (>= 3.16) and a C compiler (gcc or clang)__<br>
 * __zlib / libbz2 are bundled in the `external/` directory and built from source, no system library is needed__<br>
@@ -23,6 +23,8 @@ __DEPENDENCE__<br>
 * FastqType is a lightweight pre-processing tool for FASTQ sequencing data. It performs two primary functions:
   - **Library type detection:** Identifies whether the input FASTQ files belong to standard paired-end sequencing or single-cell sequencing, and verifies the correctness of single-cell file ordering.
   - **Memory estimation:** Estimates the memory required for a Bloom filter, which is useful for downstream duplicate-removal tools (e.g., FastqCheck).
+
+* It is **cross-platform**, running on Linux, macOS and Windows (x86_64 / ARM64).
 
 * It supports both **plain FASTQ** (`.fastq` / `.fq`) and **compressed FASTQ** (`.fastq.gz` / `.fq.gz` / `.fastq.bz2`) as input.
 
@@ -59,7 +61,14 @@ rm -rf build
 
 The compiled binary `fastqtype` will be generated at `build/fastqtype`.
 
-## 2.3 Build Options
+## 2.3 Prebuilt Binaries
+
+Prebuilt binaries for Linux (amd64/arm64, fully static musl), macOS (amd64/arm64)
+and Windows (amd64/arm64) are published with each release — see the
+[Releases](https://github.com/NGDC-GSA/FastqType/releases) page. Building from
+source is only needed if you want to customize the build.
+
+## 2.4 Build Options
 
 | Option              | Default   | Description                                        |
 |---------------------|-----------|----------------------------------------------------|

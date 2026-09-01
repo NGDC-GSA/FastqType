@@ -85,3 +85,14 @@ Descrip:
     3. add a github action (release.yml) that builds fully static executables
        for linux amd64 and arm64 and publishes them as a github release
 
+===================== Version2.0.6 (2026-09-01) =====================
+### Features
+
+- Added `version.h` as the single source of the version number; both the binary and the release workflow now read the version from it
+- Made the codebase cross-platform (**Windows** / macOS / Linux): replaced the non-portable `%llu` / `%lld` format specifiers with the `PRIu64` / `PRId64` macros from `<inttypes.h>`
+- Reworked the GitHub Actions release workflow to build Linux (amd64/arm64, fully static musl), macOS (amd64/arm64) and Windows (amd64/arm64) binaries in parallel and publish them as a GitHub release
+
+### Bug Fixes
+
+- Fixed the Linux arm64 release build: switched from the zig cross-compiler to native musl-gcc on GitHub's arm64 runner
+
